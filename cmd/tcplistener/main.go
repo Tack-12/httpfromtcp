@@ -19,7 +19,7 @@ func main() {
 		return
 	}
 
-	log.Printf("Liestening traffic on port %s ", port)
+	fmt.Printf("Liestening traffic on port %s ", port)
 
 	for {
 		conn, err := f.Accept()
@@ -29,15 +29,13 @@ func main() {
 			break
 		}
 
-		log.Printf("Connection established on %s ", conn.RemoteAddr())
+		fmt.Printf("Connection established on %s ", conn.RemoteAddr())
 
 		ch := getLinesChannel(conn)
 
 		for i := range ch {
 			fmt.Println(i)
 		}
-
-		log.Printf("Connection to %s has been closed", conn.RemoteAddr())
 
 	}
 
