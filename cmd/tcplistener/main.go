@@ -19,7 +19,7 @@ func main() {
 		return
 	}
 
-	fmt.Printf("Liestening traffic on port %s ", port)
+	fmt.Println("Liestening traffic on port ", port)
 
 	for {
 		conn, err := f.Accept()
@@ -29,13 +29,15 @@ func main() {
 			break
 		}
 
-		fmt.Printf("Connection established on %s ", conn.RemoteAddr())
+		fmt.Println("Connection established on ", conn.RemoteAddr())
 
 		ch := getLinesChannel(conn)
 
 		for i := range ch {
 			fmt.Println(i)
 		}
+
+		fmt.Println("Connection ended", conn.RemoteAddr())
 
 	}
 
@@ -49,13 +51,17 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 	var line string
 
 	go func() {
+		defer f.Close()
+		defer close(ch)
 		for {
 
 			n, err := f.Read(buffer)
 
 			if err != nil {
+				if line != "" {
+					ch <- line
+				}
 				if errors.Is(err, io.EOF) {
-					close(ch)
 					return
 				}
 				fmt.Println("Error reading content")
@@ -70,8 +76,8 @@ func getLinesChannel(f io.ReadCloser) <-chan string {
 				} else {
 					line += string(cb)
 				}
-			}
 
+			}
 		}
 	}()
 	return ch
