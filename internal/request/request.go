@@ -1,6 +1,7 @@
 package request
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -36,7 +37,7 @@ func (r *Request) Parse(data []byte) (int, error) {
 
 	switch r.CurrState {
 	case Initialized:
-		n, err := parseRequestLine(string(data), r)
+		n, err := parseRequestLine(data, r)
 
 		if err != nil {
 			return 0, fmt.Errorf("Error Occured : %s", err)
@@ -89,40 +90,41 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 		readtoIndex += n
 
-		n, err = r.Parse(buf)
+		readN, err := r.Parse(buf[:readtoIndex])
 
 		if err != nil {
 			return nil, err
 		}
 
-		nbuff := make([]byte, bufSize-n)
-		copy(nbuff, buf[readtoIndex:])
+		copy(buf, buf[readN:bufSize])
 
-		readtoIndex -= n
-
+		readtoIndex -= readN
 	}
 	return r, nil
 
 }
 
-func parseRequestLine(line string, req *Request) (int, error) {
+func parseRequestLine(line []byte, req *Request) (int, error) {
+	SEPERATOR := []byte("\r\n")
+	idx := bytes.Index(line, SEPERATOR)
 
-	s := strings.Split(line, "\r\n")
-
-	if len(s) == 1 {
+	if idx == -1 {
 		return 0, nil
 	}
 
-	rline := strings.Split(s[0], " ")
+	startline := line[:idx]
+	readL := idx + len(SEPERATOR)
+
+	rline := bytes.Split(startline, []byte(" "))
 
 	if len(rline) != 3 {
-		err := fmt.Errorf("the data contains less value")
-		return 0, err
+		return 0, fmt.Errorf("Not Enough Data")
+
 	}
 
-	method := rline[0]
-	reqt := rline[1]
-	h := strings.Split(rline[2], "/")
+	method := string(rline[0])
+	reqt := string(rline[1])
+	h := strings.Split(string(rline[2]), "/")
 	httpv := h[1]
 
 	if method != strings.ToUpper(method) {
@@ -137,5 +139,5 @@ func parseRequestLine(line string, req *Request) (int, error) {
 
 	req.RequestLine = RequestLine{Method: method, RequestTarget: reqt, HttpVersion: httpv}
 
-	return len(s[0]), nil
+	return readL, nil
 }
