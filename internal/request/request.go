@@ -7,6 +7,9 @@ import (
 	"strings"
 )
 
+var bufSize int = 8
+
+// Enum Type
 type States int
 
 const (
@@ -14,6 +17,7 @@ const (
 	Done
 )
 
+// --- REQUEST STRUCT AND METHODS ---
 type Request struct {
 	RequestLine RequestLine
 	CurrState   States
@@ -25,6 +29,9 @@ type RequestLine struct {
 	Method        string
 }
 
+//Method to Parse the Data until reaches the last byte, If the
+//current state is not Initialized return Error
+
 func (r *Request) Parse(data []byte) (int, error) {
 
 	switch r.CurrState {
@@ -32,40 +39,70 @@ func (r *Request) Parse(data []byte) (int, error) {
 		n, err := parseRequestLine(string(data), r)
 
 		if err != nil {
-			return -1, fmt.Errorf("Error Occured : %s", err)
+			return 0, fmt.Errorf("Error Occured : %s", err)
 		}
 
 		if n == 0 {
 			return 0, nil
 		}
-
-		r.CurrState = Done
 		return n, nil
 	case Done:
-		return -1, errors.New("Error trying to read data from done State")
+		return 0, errors.New("Error trying to read data from done State")
 
 	default:
-		return -1, errors.New("Error: Unkown State")
+		return 0, errors.New("Error: Unkown State")
 	}
 }
 
 func RequestFromReader(reader io.Reader) (*Request, error) {
 
-	req, err := io.ReadAll(reader)
+	var r *Request = &Request{}
 
-	if err != nil {
-		return nil, err
+	var readtoIndex int = 0
+
+	r.CurrState = Initialized
+
+	buf := make([]byte, bufSize)
+
+	for {
+
+		n, err := reader.Read(buf[readtoIndex:])
+
+		if err != nil {
+			if err == io.EOF {
+				r.CurrState = Done
+				break
+			}
+		}
+
+		if cap(buf) == bufSize {
+			bufSize *= 2
+			oldbuf := buf
+
+			buf = make([]byte, bufSize)
+			copy(buf, oldbuf)
+		}
+
+		if r.CurrState == Done {
+			break
+		}
+
+		readtoIndex += n
+
+		n, err = r.Parse(buf)
+
+		if err != nil {
+			return nil, err
+		}
+
+		nbuff := make([]byte, bufSize-n)
+		copy(nbuff, buf[readtoIndex:])
+
+		readtoIndex -= n
+
 	}
-
-	r := &Request{CurrState: Initialized}
-
-	_, err = parseRequestLine(string(req), r)
-
-	if err != nil {
-		return nil, err
-	}
-
 	return r, nil
+
 }
 
 func parseRequestLine(line string, req *Request) (int, error) {
@@ -80,7 +117,7 @@ func parseRequestLine(line string, req *Request) (int, error) {
 
 	if len(rline) != 3 {
 		err := fmt.Errorf("the data contains less value")
-		return -1, err
+		return 0, err
 	}
 
 	method := rline[0]
@@ -90,12 +127,12 @@ func parseRequestLine(line string, req *Request) (int, error) {
 
 	if method != strings.ToUpper(method) {
 		err := errors.New("Not Capitalized String")
-		return -1, err
+		return 0, err
 	}
 
 	if httpv != "1.1" {
 		err := errors.New("HTTP Version not 1.1")
-		return -1, err
+		return 0, err
 	}
 
 	req.RequestLine = RequestLine{Method: method, RequestTarget: reqt, HttpVersion: httpv}
