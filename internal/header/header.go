@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -47,8 +48,10 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	fval := string(data[sep_idx+1:])
 
 	//Check validitiy if hostname contains spaces it is invalid
-	if strings.Contains(host, " ") {
-		return 0, false, errors.New("There are spaces in host name")
+	fName, err := validateHeader(host)
+
+	if err != nil {
+		return 0, false, fmt.Errorf("Theres an error :%s", err)
 	}
 
 	//Remove whitespaces and crlf from the field value
@@ -56,7 +59,31 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	fval = strings.ReplaceAll(fval, "\r\n", "")
 
 	//Parse the data into the data type
-	h[host] = fval
+	h[fName] = fval
 
 	return crlf_idx + len(CRLF), false, nil
+}
+
+func validateHeader(h string) (string, error) {
+
+	if strings.Contains(h, " ") {
+		return "", errors.New("There are spaces in host name")
+	}
+
+	if len(h) <= 1 {
+		return "", errors.New("Not enough length..")
+	}
+
+	valid, err := regexp.MatchString(`^[A-Za-z0-9!#$%&'*+\-._\|~^]+$`, h)
+
+	if err != nil {
+		return "", fmt.Errorf("Error Parsing string: %s \n", err)
+	}
+
+	if valid {
+		return strings.ToLower(h), nil
+	}
+
+	return "", errors.New("Error Parsing string \n")
+
 }
