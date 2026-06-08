@@ -29,8 +29,6 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	sep_idx := bytes.Index(data, SEPERATOR)
 	crlf_idx := bytes.Index(data, CRLF)
 
-	fmt.Printf("This is the crlf index : %v \n", crlf_idx)
-
 	if crlf_idx == 0 {
 		return 0, true, nil
 	}
@@ -59,7 +57,11 @@ func (h Headers) Parse(data []byte) (n int, done bool, err error) {
 	fval = strings.ReplaceAll(fval, "\r\n", "")
 
 	//Parse the data into the data type
-	h[fName] = fval
+	if h[fName] != "" {
+		h[fName] = h[fName] + ", " + fval
+	} else {
+		h[fName] = fval
+	}
 
 	return crlf_idx + len(CRLF), false, nil
 }

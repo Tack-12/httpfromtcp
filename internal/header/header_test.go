@@ -57,4 +57,17 @@ func TestHeaders(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "55", headers["content-length"])
 	assert.False(t, done)
+
+	//Headers with same data eg: Name: Tack , Name:Pranaya
+	headers = NewHeaders()
+	data = []byte("Set-Person: lane-loves-go \r\n\r\n")
+	data1 := []byte("Set-Person: prime-loves-zig \r\n\r\n")
+	data2 := []byte("Set-Person: tj-loves-ocaml \r\n\r\n")
+	n, done, err = headers.Parse(data)
+	n, done, err = headers.Parse(data1)
+	n, done, err = headers.Parse(data2)
+	require.NoError(t, err)
+	assert.Equal(t, "lane-loves-go, prime-loves-zig, tj-loves-ocaml", headers["set-person"])
+	assert.False(t, done)
+
 }
