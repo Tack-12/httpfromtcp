@@ -97,7 +97,6 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		}
 
 		READUNTIL += nRead
-		fmt.Printf("%q\n", buf[:READUNTIL])
 		nParsed, err := request.Parser(buf[:READUNTIL])
 
 		if err != nil {
@@ -120,8 +119,6 @@ func parseRequestLine(data []byte) (*RequestLine, int, error) {
 
 	//The index at which the Seperator or the Next line byte is found
 	idx := bytes.Index(data, SEPERATOR)
-
-	fmt.Println(idx)
 
 	if idx == -1 {
 		return nil, 0, nil

@@ -1,9 +1,8 @@
 package main
 
 import (
-	"errors"
 	"fmt"
-	"io"
+	"httpfromtcp/internal/request"
 	"log"
 	"net"
 )
@@ -31,54 +30,20 @@ func main() {
 
 		fmt.Println("Connection established on ", conn.RemoteAddr())
 
-		ch := getLinesChannel(conn)
+		ch, err := request.RequestFromReader(conn)
 
-		for i := range ch {
-			fmt.Println(i)
+		if err != nil {
+			log.Fatal(err)
+			break
 		}
+
+		fmt.Println("Request Line:")
+		fmt.Printf("Method: %s \n", ch.RequestLine.Method)
+		fmt.Printf("Target: %s \n", ch.RequestLine.RequestTarget)
+		fmt.Printf("Http Version: %s \n", ch.RequestLine.HttpVersion)
 
 		fmt.Println("Connection ended", conn.RemoteAddr())
 
 	}
 
-}
-
-func getLinesChannel(f io.ReadCloser) <-chan string {
-
-	buffer := make([]byte, 8)
-	ch := make(chan string)
-
-	var line string
-
-	go func() {
-		defer f.Close()
-		defer close(ch)
-		for {
-
-			n, err := f.Read(buffer)
-
-			if err != nil {
-				if line != "" {
-					ch <- line
-				}
-				if errors.Is(err, io.EOF) {
-					return
-				}
-				fmt.Println("Error reading content")
-				break
-			}
-
-			//Here the n = Length of buffer (Can be filled and be 8 or the amount left)
-			for _, cb := range buffer[:n] {
-				if cb == '\n' {
-					ch <- line
-					line = ""
-				} else {
-					line += string(cb)
-				}
-
-			}
-		}
-	}()
-	return ch
 }
