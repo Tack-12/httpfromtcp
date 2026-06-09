@@ -3,6 +3,7 @@ package header
 import (
 	"bytes"
 	"fmt"
+	"regexp"
 	"strings"
 )
 
@@ -71,5 +72,16 @@ func ParseHeader(data []byte) (string, string, error) {
 		return "", "", fmt.Errorf("Invalid Field Name , Contains Spaces")
 	}
 
-	return fName, triFVal, nil
+	valid, err := regexp.MatchString("^[A-Za-z0-9!#$%&'*+.^_`|~-]+$", fName)
+
+	if err != nil {
+
+		return "", "", fmt.Errorf("Error: %s", err)
+	}
+
+	if !valid {
+		return "", "", fmt.Errorf("Invalid Field Name , Contains weird things")
+	}
+
+	return strings.ToLower(fName), triFVal, nil
 }
