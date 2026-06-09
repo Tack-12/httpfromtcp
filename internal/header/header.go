@@ -2,9 +2,7 @@ package header
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
-	"regexp"
 	"strings"
 )
 
@@ -17,75 +15,61 @@ func NewHeaders() Headers {
 }
 
 // Method to Parse the header into the datatype
-func (h Headers) Parse(data []byte) (n int, done bool, err error) {
+func (h Headers) Parse(data []byte) (int, bool, error) {
 
 	//Seperators and ending CRLF
-	SEPERATOR := []byte(":")
 	CRLF := []byte("\r\n")
+	readUpto := 0
 
-	NO_SEP := errors.New("Not A valid header")
+	for {
+		//  Checking for the index of both occurance
+		crlf_idx := bytes.Index(data[readUpto:], CRLF)
 
-	//  Checking for the index of both occurance
-	sep_idx := bytes.Index(data, SEPERATOR)
-	crlf_idx := bytes.Index(data, CRLF)
+		if crlf_idx == 0 {
+			readUpto += len(CRLF)
+			break
+		}
 
-	if crlf_idx == 0 {
-		return 0, true, nil
+		if crlf_idx == -1 {
+			break
+		}
+
+		//Get Value upto the first sep
+		fN, fV, err := ParseHeader(data[readUpto : readUpto+crlf_idx])
+
+		if err != nil {
+			return 0, false, fmt.Errorf("Error Parsing the Header %s", err)
+		}
+
+		fmt.Printf("FN: %s, Fv:%s \n", fN, fV)
+
+		readUpto += crlf_idx + len(CRLF)
+
+		if h[fN] != "" {
+			h[fN] = h[fN] + "," + fV
+		} else {
+			h[fN] = fV
+		}
 	}
-
-	if sep_idx == -1 {
-		return 0, false, NO_SEP
-	}
-
-	if crlf_idx == -1 {
-		return 0, false, nil
-	}
-
-	//Dividing the data into Host name and value
-	host := string(data[:sep_idx])
-	fval := string(data[sep_idx+1:])
-
-	//Check validitiy if hostname contains spaces it is invalid
-	fName, err := validateHeader(host)
-
-	if err != nil {
-		return 0, false, fmt.Errorf("Theres an error :%s", err)
-	}
-
-	//Remove whitespaces and crlf from the field value
-	fval = strings.ReplaceAll(fval, " ", "")
-	fval = strings.ReplaceAll(fval, "\r\n", "")
-
-	//Parse the data into the data type
-	if h[fName] != "" {
-		h[fName] = h[fName] + ", " + fval
-	} else {
-		h[fName] = fval
-	}
-
-	return crlf_idx + len(CRLF), false, nil
+	return readUpto, true, nil
 }
 
-func validateHeader(h string) (string, error) {
+func ParseHeader(data []byte) (string, string, error) {
 
-	if strings.Contains(h, " ") {
-		return "", errors.New("There are spaces in host name")
+	fieldLine := bytes.SplitN(data, []byte(":"), 2)
+
+	if len(fieldLine) != 2 {
+		return "", "", fmt.Errorf("Not a valid field Line")
 	}
 
-	if len(h) <= 1 {
-		return "", errors.New("Not enough length..")
+	fName := string(fieldLine[0])
+	fVal := fieldLine[1]
+
+	triFVal := string(bytes.TrimSpace(fVal))
+
+	if fName != strings.TrimSpace(fName) {
+		return "", "", fmt.Errorf("Invalid Field Name , Contains Spaces")
 	}
 
-	valid, err := regexp.MatchString(`^[A-Za-z0-9!#$%&'*+\-._\|~^]+$`, h)
-
-	if err != nil {
-		return "", fmt.Errorf("Error Parsing string: %s \n", err)
-	}
-
-	if valid {
-		return strings.ToLower(h), nil
-	}
-
-	return "", errors.New("Error Parsing string \n")
-
+	return fName, triFVal, nil
 }
