@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"httpfromtcp/internal/header"
 	"io"
 	"strings"
 )
@@ -15,6 +16,7 @@ type ParserState int
 
 const (
 	Initialized ParserState = iota
+	RequestParsingHeader
 	Done
 )
 
@@ -22,6 +24,7 @@ const (
 type Request struct {
 	RequestLine RequestLine
 	State       ParserState
+	Headers     header.Headers
 }
 
 // The top line from the req (GET / HTTP/1.1)
@@ -38,7 +41,7 @@ func (rq *Request) Parser(data []byte) (int, error) {
 
 	switch rq.State {
 	case Initialized:
-		reqLine, n, err := parseRequestLine(data)
+		reqLine, n, err := parseRequestLine(data[readuntil:])
 
 		if err != nil {
 			return readuntil, fmt.Errorf("Error occured %s", err)
@@ -53,8 +56,23 @@ func (rq *Request) Parser(data []byte) (int, error) {
 
 		readuntil += n
 
-		return readuntil, nil
+	case RequestParsingHeader:
+		n, done, err := rq.Headers.Parse(data)
 
+		if err != nil {
+			return 0, err
+		}
+
+		if n == 0 {
+			return 0, nil
+		}
+
+		if done {
+			rq.State = Done
+			readuntil += n
+		}
+
+		readuntil += n
 	case Done:
 		return 0, fmt.Errorf("ERROR: Trying to access the Parser in Done state,")
 
@@ -62,6 +80,7 @@ func (rq *Request) Parser(data []byte) (int, error) {
 		return 0, fmt.Errorf("ERROR: Trying to access the Parser in Unkown state,")
 	}
 
+	return readuntil, nil
 }
 
 // Get the request from the Reader / network and return the final version of the Request as Struct
@@ -75,6 +94,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 	request = &Request{}
 	request.State = Initialized
+	request.Headers = header.NewHeaders()
 
 	for request.State != Done {
 

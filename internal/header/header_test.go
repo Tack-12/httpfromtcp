@@ -60,9 +60,9 @@ func TestHeaders(t *testing.T) {
 
 	//Headers with same data eg: Name: Tack , Name:Pranaya
 	headers = NewHeaders()
-	data = []byte("Set-Person: lane-loves-go \r\n\r\n")
-	data1 := []byte("Set-Person: prime-loves-zig \r\n\r\n")
-	data2 := []byte("Set-Person: tj-loves-ocaml \r\n\r\n")
+	data = []byte("Set-Person: lane-loves-go \r\n")
+	data1 := []byte("Set-Person: prime-loves-zig \r\n")
+	data2 := []byte("Set-Person: tj-loves-ocaml \r\n")
 	n, done, err = headers.Parse(data)
 	n, done, err = headers.Parse(data1)
 	n, done, err = headers.Parse(data2)
