@@ -4,17 +4,20 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"httpfromtcp/internal/header"
 	"io"
 	"strings"
 )
 
 var BUFFSIZE int = 8
+var SEPERATOR = []byte("\r\n")
 
 // The New Parser State
 type ParserState int
 
 const (
 	Initialized ParserState = iota
+	ParsingHeaders
 	Done
 )
 
@@ -22,6 +25,7 @@ const (
 type Request struct {
 	RequestLine RequestLine
 	State       ParserState
+	Headers     header.Headers
 }
 
 // The top line from the req (GET / HTTP/1.1)
@@ -35,33 +39,50 @@ type RequestLine struct {
 func (rq *Request) Parser(data []byte) (int, error) {
 
 	readuntil := 0
+outer:
+	for {
+		switch rq.State {
+		case Initialized:
+			reqLine, n, err := parseRequestLine(data[readuntil:])
 
-	switch rq.State {
-	case Initialized:
-		reqLine, n, err := parseRequestLine(data)
+			if err != nil {
+				return readuntil, fmt.Errorf("Error occured %s", err)
+			}
 
-		if err != nil {
-			return readuntil, fmt.Errorf("Error occured %s", err)
+			if n == 0 {
+				break outer
+			}
+
+			rq.RequestLine = *reqLine
+			rq.State = ParsingHeaders
+			readuntil += n
+
+		case ParsingHeaders:
+			n, done, err := rq.Headers.Parse(data[readuntil:])
+
+			if n == 0 {
+				break outer
+			}
+
+			if err != nil {
+				return 0, fmt.Errorf("error Parsing the headers")
+			}
+
+			if done {
+				readuntil += n
+				rq.State = Done
+				break outer
+			}
+
+			readuntil += n
+
+		case Done:
+			break outer
+		default:
+			return 0, fmt.Errorf("ERROR: Trying to access the Parser in Unkown state,")
 		}
-
-		if n == 0 {
-			return 0, nil
-		}
-
-		rq.RequestLine = *reqLine
-		rq.State = Done
-
-		readuntil += n
-
-		return readuntil, nil
-
-	case Done:
-		return 0, fmt.Errorf("ERROR: Trying to access the Parser in Done state,")
-
-	default:
-		return 0, fmt.Errorf("ERROR: Trying to access the Parser in Unkown state,")
 	}
-
+	return readuntil, nil
 }
 
 // Get the request from the Reader / network and return the final version of the Request as Struct
@@ -75,6 +96,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 	request = &Request{}
 	request.State = Initialized
+	request.Headers = header.NewHeaders()
 
 	for request.State != Done {
 
@@ -92,6 +114,7 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		if err != nil {
 			if err == io.EOF {
 				request.State = Done
+				break
 			}
 			return nil, fmt.Errorf("error occured : %s", err)
 		}
@@ -113,9 +136,6 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 // Parse the acutal request and create a new struct
 func parseRequestLine(data []byte) (*RequestLine, int, error) {
-
-	//Varibales:
-	SEPERATOR := []byte("\r\n")
 
 	//The index at which the Seperator or the Next line byte is found
 	idx := bytes.Index(data, SEPERATOR)

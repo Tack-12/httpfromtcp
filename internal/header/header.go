@@ -21,18 +21,21 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 	//Seperators and ending CRLF
 	CRLF := []byte("\r\n")
 	readUpto := 0
-
+	if len(data[readUpto:]) == 0 {
+		return readUpto, false, nil
+	}
+outer:
 	for {
 		//  Checking for the index of both occurance
 		crlf_idx := bytes.Index(data[readUpto:], CRLF)
 
 		if crlf_idx == 0 {
 			readUpto += len(CRLF)
-			break
+			break outer
 		}
 
 		if crlf_idx == -1 {
-			break
+			return 0, false, nil
 		}
 
 		//Get Value upto the first sep
@@ -42,8 +45,6 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 			return 0, false, fmt.Errorf("Error Parsing the Header %s", err)
 		}
 
-		fmt.Printf("FN: %s, Fv:%s \n", fN, fV)
-
 		readUpto += crlf_idx + len(CRLF)
 
 		if h[fN] != "" {
@@ -52,7 +53,7 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 			h[fN] = fV
 		}
 	}
-	return readUpto, true, nil
+	return readUpto, false, nil
 }
 
 func ParseHeader(data []byte) (string, string, error) {
