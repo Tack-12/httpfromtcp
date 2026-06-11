@@ -29,7 +29,6 @@ outer:
 
 		//  Checking for the index of both occurance
 		crlf_idx := bytes.Index(data[read:], CRLF)
-		fmt.Printf("CD:%s , read:%v CRLF_idx: %v\n", string(data[read:]), read, crlf_idx)
 
 		if crlf_idx == 0 {
 			read += len(CRLF)
@@ -43,8 +42,6 @@ outer:
 
 		//Check validitiy if hostname contains spaces it is invalid
 		fName, fval, err := GetFields(data[read : read+crlf_idx])
-
-		fmt.Printf("Field Name:%s , Field Value:%s \n", fName, fval)
 
 		if err != nil {
 			return 0, false, fmt.Errorf("Theres an error :%s", err)
@@ -67,8 +64,6 @@ outer:
 
 func GetFields(data []byte) (string, string, error) {
 	fields := bytes.SplitN(data, []byte(":"), 2)
-
-	fmt.Printf("The Fields Are: %s ", fields)
 
 	if len(fields) != 2 {
 		return "", "", fmt.Errorf("Has a malformed Header line")
@@ -106,4 +101,13 @@ func validateHeader(h string) (string, error) {
 
 	return "", errors.New("Error Parsing string \n")
 
+}
+
+func (h Headers) Get(key string) (string, bool) {
+
+	key = strings.ToLower(key)
+
+	value, ok := h[key]
+
+	return value, ok
 }

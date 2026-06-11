@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"httpfromtcp/internal/header"
 	"io"
+	"strconv"
 	"strings"
 )
 
@@ -17,6 +18,7 @@ type ParserState int
 const (
 	Initialized ParserState = iota
 	RequestParsingHeader
+	ParsingBody
 	Done
 )
 
@@ -25,6 +27,7 @@ type Request struct {
 	RequestLine RequestLine
 	State       ParserState
 	Headers     header.Headers
+	Body        string
 }
 
 // The top line from the req (GET / HTTP/1.1)
@@ -34,19 +37,49 @@ type RequestLine struct {
 	Method        string
 }
 
+func CreateRequest() *Request {
+	return &Request{
+		State:   Initialized,
+		Headers: header.NewHeaders(),
+		Body:    "",
+	}
+}
+
+func (rq *Request) hasBody() bool {
+	value, exists := rq.Headers.Get("Content-Length")
+
+	if !exists {
+		value = "0"
+	}
+	num, err := strconv.Atoi(value)
+
+	if err != nil {
+		num = 0
+	}
+
+	return num > 0
+
+}
+
 // New Parser Method in Request to use the Parser line to do the parsing:
 func (rq *Request) Parser(data []byte) (int, error) {
 
-	readuntil := 0
+	read := 0
 
 outer:
 	for {
+		currentData := data[read:]
+
+		if len(currentData) == 0 {
+			break outer
+		}
+
 		switch rq.State {
 		case Initialized:
-			reqLine, n, err := parseRequestLine(data[readuntil:])
+			reqLine, n, err := parseRequestLine(currentData)
 
 			if err != nil {
-				return readuntil, fmt.Errorf("Error occured %s", err)
+				return read, fmt.Errorf("Error occured %s", err)
 			}
 
 			if n == 0 {
@@ -56,10 +89,10 @@ outer:
 			rq.RequestLine = *reqLine
 			rq.State = RequestParsingHeader
 
-			readuntil += n
+			read += n
 
 		case RequestParsingHeader:
-			n, done, err := rq.Headers.Parse(data[readuntil:])
+			n, done, err := rq.Headers.Parse(currentData)
 
 			if err != nil {
 				return 0, err
@@ -70,10 +103,44 @@ outer:
 			}
 
 			if done {
-				rq.State = Done
+
+				if rq.hasBody() {
+					rq.State = ParsingBody
+				} else {
+					rq.State = Done
+				}
+
 			}
 
-			readuntil += n
+			read += n
+
+		case ParsingBody:
+
+			value, exists := rq.Headers.Get("Content-Length")
+
+			if !exists {
+				rq.State = Done
+				break outer
+			}
+
+			if value == "0" {
+				rq.State = Done
+				break outer
+			}
+
+			num, err := strconv.Atoi(value)
+
+			if err != nil {
+				return 0, fmt.Errorf("Error converting the value")
+			}
+
+			remainder := min(num-len(rq.Body), len(currentData))
+			rq.Body += string(currentData[:remainder])
+			read += remainder
+
+			if len(rq.Body) == num {
+				rq.State = Done
+			}
 
 		case Done:
 			break outer
@@ -82,34 +149,32 @@ outer:
 		}
 	}
 
-	return readuntil, nil
+	return read, nil
 }
 
 // Get the request from the Reader / network and return the final version of the Request as Struct
 func RequestFromReader(reader io.Reader) (*Request, error) {
 
-	READUNTIL := 0
+	read := 0
 
 	buf := make([]byte, BUFFSIZE)
 
 	var request *Request
 
-	request = &Request{}
-	request.State = Initialized
-	request.Headers = header.NewHeaders()
+	request = CreateRequest()
 
 	for request.State != Done {
 
 		//Instead of checking for free-ness check for how much of the data in buff is already read
 		//If all data in buff is read than double if not keep it stagnant.
-		if len(buf) == READUNTIL {
+		if len(buf) == read {
 			BUFFSIZE = BUFFSIZE * 2
 			newbuf := make([]byte, BUFFSIZE)
 			copy(newbuf, buf)
 			buf = newbuf
 		}
 
-		nRead, err := reader.Read(buf[READUNTIL:])
+		nRead, err := reader.Read(buf[read:])
 
 		if err != nil {
 			if err == io.EOF {
@@ -118,15 +183,15 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 			return nil, fmt.Errorf("error occured : %s", err)
 		}
 
-		READUNTIL += nRead
-		nParsed, err := request.Parser(buf[:READUNTIL])
+		read += nRead
+		nParsed, err := request.Parser(buf[:read])
 
 		if err != nil {
 			return nil, fmt.Errorf("There was an Error Parsing %s", err)
 		}
 
-		copy(buf, buf[nParsed:READUNTIL])
-		READUNTIL -= nParsed
+		copy(buf, buf[nParsed:read])
+		read -= nParsed
 
 	}
 
