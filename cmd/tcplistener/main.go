@@ -30,7 +30,7 @@ func main() {
 
 		fmt.Println("Connection established on ", conn.RemoteAddr())
 
-		ch, err := request.RequestFromReader(conn)
+		rq, err := request.RequestFromReader(conn)
 
 		if err != nil {
 			log.Fatal(err)
@@ -38,9 +38,16 @@ func main() {
 		}
 
 		fmt.Println("Request Line:")
-		fmt.Printf("Method: %s \n", ch.RequestLine.Method)
-		fmt.Printf("Target: %s \n", ch.RequestLine.RequestTarget)
-		fmt.Printf("Http Version: %s \n", ch.RequestLine.HttpVersion)
+		fmt.Printf("Method: %s \n", rq.RequestLine.Method)
+		fmt.Printf("Target: %s \n", rq.RequestLine.RequestTarget)
+		fmt.Printf("Http Version: %s \n", rq.RequestLine.HttpVersion)
+
+		fmt.Println("Methods:")
+
+		for key, value := range rq.Headers {
+			fmt.Printf("This is called")
+			fmt.Printf("- %s: %s \n", key, value)
+		}
 
 		fmt.Println("Connection ended", conn.RemoteAddr())
 

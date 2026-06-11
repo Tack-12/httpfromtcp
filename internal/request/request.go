@@ -39,45 +39,47 @@ func (rq *Request) Parser(data []byte) (int, error) {
 
 	readuntil := 0
 
-	switch rq.State {
-	case Initialized:
-		reqLine, n, err := parseRequestLine(data[readuntil:])
+outer:
+	for {
+		switch rq.State {
+		case Initialized:
+			reqLine, n, err := parseRequestLine(data[readuntil:])
 
-		if err != nil {
-			return readuntil, fmt.Errorf("Error occured %s", err)
-		}
+			if err != nil {
+				return readuntil, fmt.Errorf("Error occured %s", err)
+			}
 
-		if n == 0 {
-			return 0, nil
-		}
+			if n == 0 {
+				break outer
+			}
 
-		rq.RequestLine = *reqLine
-		rq.State = Done
-
-		readuntil += n
-
-	case RequestParsingHeader:
-		n, done, err := rq.Headers.Parse(data)
-
-		if err != nil {
-			return 0, err
-		}
-
-		if n == 0 {
-			return 0, nil
-		}
-
-		if done {
+			rq.RequestLine = *reqLine
 			rq.State = Done
+
 			readuntil += n
+
+		case RequestParsingHeader:
+			n, done, err := rq.Headers.Parse(data)
+
+			if err != nil {
+				return 0, err
+			}
+
+			if n == 0 {
+				break outer
+			}
+
+			if done {
+				rq.State = Done
+				readuntil += n
+			}
+
+			readuntil += n
+		case Done:
+			break outer
+		default:
+			return 0, fmt.Errorf("ERROR: Trying to access the Parser in Unkown state,")
 		}
-
-		readuntil += n
-	case Done:
-		return 0, fmt.Errorf("ERROR: Trying to access the Parser in Done state,")
-
-	default:
-		return 0, fmt.Errorf("ERROR: Trying to access the Parser in Unkown state,")
 	}
 
 	return readuntil, nil
