@@ -54,12 +54,12 @@ outer:
 			}
 
 			rq.RequestLine = *reqLine
-			rq.State = Done
+			rq.State = RequestParsingHeader
 
 			readuntil += n
 
 		case RequestParsingHeader:
-			n, done, err := rq.Headers.Parse(data)
+			n, done, err := rq.Headers.Parse(data[readuntil:])
 
 			if err != nil {
 				return 0, err
@@ -71,10 +71,10 @@ outer:
 
 			if done {
 				rq.State = Done
-				readuntil += n
 			}
 
 			readuntil += n
+
 		case Done:
 			break outer
 		default:

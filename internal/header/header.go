@@ -61,13 +61,14 @@ outer:
 		} else {
 			h[fName] = fval
 		}
-
 	}
 	return read, done, nil
 }
 
 func GetFields(data []byte) (string, string, error) {
 	fields := bytes.SplitN(data, []byte(":"), 2)
+
+	fmt.Printf("The Fields Are: %s ", fields)
 
 	if len(fields) != 2 {
 		return "", "", fmt.Errorf("Has a malformed Header line")

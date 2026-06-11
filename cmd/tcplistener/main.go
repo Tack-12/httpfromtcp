@@ -45,7 +45,6 @@ func main() {
 		fmt.Println("Methods:")
 
 		for key, value := range rq.Headers {
-			fmt.Printf("This is called")
 			fmt.Printf("- %s: %s \n", key, value)
 		}
 
