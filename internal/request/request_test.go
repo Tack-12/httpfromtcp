@@ -54,11 +54,7 @@ func TestRequestLineParse(t *testing.T) {
 
 }
 
-<<<<<<< HEAD
-func TestHeaders(t *testing.T) {
-=======
 func StandardHeader(t *testing.T) {
->>>>>>> Checking
 	// Test: Standard Headers
 	reader := &chunkReader{
 		data:            "GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
