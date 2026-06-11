@@ -2,6 +2,7 @@ package header
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -20,11 +21,6 @@ func (h Headers) Parse(data []byte) (int, bool, error) {
 
 	//Seperators and ending CRLF
 	CRLF := []byte("\r\n")
-<<<<<<< HEAD
-	readUpto := 0
-	if len(data[readUpto:]) == 0 {
-		return readUpto, false, nil
-=======
 	read := 0
 	done := false
 
@@ -76,40 +72,8 @@ func GetFields(data []byte) (string, string, error) {
 
 	if len(fields) != 2 {
 		return "", "", fmt.Errorf("Has a malformed Header line")
->>>>>>> Checking
 	}
-outer:
-	for {
-		//  Checking for the index of both occurance
-		crlf_idx := bytes.Index(data[readUpto:], CRLF)
 
-<<<<<<< HEAD
-		if crlf_idx == 0 {
-			readUpto += len(CRLF)
-			break outer
-		}
-
-		if crlf_idx == -1 {
-			return 0, false, nil
-		}
-
-		//Get Value upto the first sep
-		fN, fV, err := ParseHeader(data[readUpto : readUpto+crlf_idx])
-
-		if err != nil {
-			return 0, false, fmt.Errorf("Error Parsing the Header %s", err)
-		}
-
-		readUpto += crlf_idx + len(CRLF)
-
-		if h[fN] != "" {
-			h[fN] = h[fN] + "," + fV
-		} else {
-			h[fN] = fV
-		}
-	}
-	return readUpto, false, nil
-=======
 	fieldN, err := validateHeader(string(fields[0]))
 	if err != nil {
 		return "", "", fmt.Errorf("Malformed Header Name: %s", err)
@@ -117,47 +81,29 @@ outer:
 	fieldV := strings.TrimSpace(string(fields[1]))
 
 	return fieldN, fieldV, nil
->>>>>>> Checking
 }
 
-func ParseHeader(data []byte) (string, string, error) {
+func validateHeader(h string) (string, error) {
 
-<<<<<<< HEAD
-	fieldLine := bytes.SplitN(data, []byte(":"), 2)
-
-	if len(fieldLine) != 2 {
-		return "", "", fmt.Errorf("Not a valid field Line")
-=======
 	if strings.TrimSpace(h) != h {
 		return "", errors.New("There are spaces in host name")
->>>>>>> Checking
 	}
 
-	fName := string(fieldLine[0])
-	fVal := fieldLine[1]
-
-	triFVal := string(bytes.TrimSpace(fVal))
-
-	if fName != strings.TrimSpace(fName) {
-		return "", "", fmt.Errorf("Invalid Field Name , Contains Spaces")
+	if len(h) <= 1 {
+		return "", errors.New("Not enough length..")
 	}
 
-	valid, err := regexp.MatchString("^[A-Za-z0-9!#$%&'*+.^_`|~-]+$", fName)
+	valid, err := regexp.MatchString(`^[A-Za-z0-9!#$%&'*+\-._\|~^]+$`, h)
 
 	if err != nil {
-
-		return "", "", fmt.Errorf("Error: %s", err)
+		return "", fmt.Errorf("Error Parsing string: %s \n", err)
 	}
 
-<<<<<<< HEAD
-	if !valid {
-		return "", "", fmt.Errorf("Invalid Field Name , Contains weird things")
-=======
 	if valid {
 		strings.ReplaceAll(h, " ", "")
 		return strings.ToLower(h), nil
->>>>>>> Checking
 	}
 
-	return strings.ToLower(fName), triFVal, nil
+	return "", errors.New("Error Parsing string \n")
+
 }

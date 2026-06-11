@@ -10,18 +10,13 @@ import (
 )
 
 var BUFFSIZE int = 8
-var SEPERATOR = []byte("\r\n")
 
 // The New Parser State
 type ParserState int
 
 const (
 	Initialized ParserState = iota
-<<<<<<< HEAD
-	ParsingHeaders
-=======
 	RequestParsingHeader
->>>>>>> Checking
 	Done
 )
 
@@ -43,18 +38,7 @@ type RequestLine struct {
 func (rq *Request) Parser(data []byte) (int, error) {
 
 	readuntil := 0
-outer:
-	for {
-		switch rq.State {
-		case Initialized:
-			reqLine, n, err := parseRequestLine(data[readuntil:])
 
-<<<<<<< HEAD
-			if err != nil {
-				return readuntil, fmt.Errorf("Error occured %s", err)
-			}
-
-=======
 outer:
 	for {
 		switch rq.State {
@@ -65,20 +49,11 @@ outer:
 				return readuntil, fmt.Errorf("Error occured %s", err)
 			}
 
->>>>>>> Checking
 			if n == 0 {
 				break outer
 			}
 
 			rq.RequestLine = *reqLine
-<<<<<<< HEAD
-			rq.State = ParsingHeaders
-			readuntil += n
-
-		case ParsingHeaders:
-			n, done, err := rq.Headers.Parse(data[readuntil:])
-
-=======
 			rq.State = RequestParsingHeader
 
 			readuntil += n
@@ -90,24 +65,12 @@ outer:
 				return 0, err
 			}
 
->>>>>>> Checking
 			if n == 0 {
 				break outer
 			}
 
-<<<<<<< HEAD
-			if err != nil {
-				return 0, fmt.Errorf("error Parsing the headers")
-			}
-
-			if done {
-				readuntil += n
-				rq.State = Done
-				break outer
-=======
 			if done {
 				rq.State = Done
->>>>>>> Checking
 			}
 
 			readuntil += n
@@ -118,10 +81,7 @@ outer:
 			return 0, fmt.Errorf("ERROR: Trying to access the Parser in Unkown state,")
 		}
 	}
-<<<<<<< HEAD
-=======
 
->>>>>>> Checking
 	return readuntil, nil
 }
 
@@ -154,7 +114,6 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 		if err != nil {
 			if err == io.EOF {
 				request.State = Done
-				break
 			}
 			return nil, fmt.Errorf("error occured : %s", err)
 		}
@@ -176,6 +135,9 @@ func RequestFromReader(reader io.Reader) (*Request, error) {
 
 // Parse the acutal request and create a new struct
 func parseRequestLine(data []byte) (*RequestLine, int, error) {
+
+	//Varibales:
+	SEPERATOR := []byte("\r\n")
 
 	//The index at which the Seperator or the Next line byte is found
 	idx := bytes.Index(data, SEPERATOR)
