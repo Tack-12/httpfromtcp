@@ -17,7 +17,11 @@ type ParserState int
 
 const (
 	Initialized ParserState = iota
+<<<<<<< HEAD
 	ParsingHeaders
+=======
+	RequestParsingHeader
+>>>>>>> Checking
 	Done
 )
 
@@ -45,25 +49,53 @@ outer:
 		case Initialized:
 			reqLine, n, err := parseRequestLine(data[readuntil:])
 
+<<<<<<< HEAD
 			if err != nil {
 				return readuntil, fmt.Errorf("Error occured %s", err)
 			}
 
+=======
+outer:
+	for {
+		switch rq.State {
+		case Initialized:
+			reqLine, n, err := parseRequestLine(data[readuntil:])
+
+			if err != nil {
+				return readuntil, fmt.Errorf("Error occured %s", err)
+			}
+
+>>>>>>> Checking
 			if n == 0 {
 				break outer
 			}
 
 			rq.RequestLine = *reqLine
+<<<<<<< HEAD
 			rq.State = ParsingHeaders
 			readuntil += n
 
 		case ParsingHeaders:
 			n, done, err := rq.Headers.Parse(data[readuntil:])
 
+=======
+			rq.State = RequestParsingHeader
+
+			readuntil += n
+
+		case RequestParsingHeader:
+			n, done, err := rq.Headers.Parse(data[readuntil:])
+
+			if err != nil {
+				return 0, err
+			}
+
+>>>>>>> Checking
 			if n == 0 {
 				break outer
 			}
 
+<<<<<<< HEAD
 			if err != nil {
 				return 0, fmt.Errorf("error Parsing the headers")
 			}
@@ -72,6 +104,10 @@ outer:
 				readuntil += n
 				rq.State = Done
 				break outer
+=======
+			if done {
+				rq.State = Done
+>>>>>>> Checking
 			}
 
 			readuntil += n
@@ -82,6 +118,10 @@ outer:
 			return 0, fmt.Errorf("ERROR: Trying to access the Parser in Unkown state,")
 		}
 	}
+<<<<<<< HEAD
+=======
+
+>>>>>>> Checking
 	return readuntil, nil
 }
 
