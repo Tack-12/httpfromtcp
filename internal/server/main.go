@@ -2,18 +2,28 @@ package server
 
 import (
 	"fmt"
+	"httpfromtcp/internal/request"
 	"httpfromtcp/internal/response"
+	"io"
 	"log"
 	"net"
 	"strconv"
 )
 
+type HandlerError struct {
+	ErrorCode    response.StatusCode
+	ErrorMessage error
+}
+
+type Handler func(io.Writer, *request.Request) *HandlerError
+
 type Server struct {
 	Listner net.Listener
 	Status  bool
+	Handler Handler
 }
 
-func Serve(port int) (*Server, error) {
+func Serve(port int, handler Handler) (*Server, error) {
 
 	var MainServer *Server
 
@@ -76,7 +86,7 @@ func (s *Server) handleConn(conn net.Conn) {
 		err := response.WriteStatusLine(conn, 200)
 
 		if err != nil {
-			log.Fatalf("Error Writing Status into the Connection %s", err)
+			s.Handler{}
 		}
 		headers := response.GetDefaultHeaders(0)
 
@@ -90,5 +100,9 @@ func (s *Server) handleConn(conn net.Conn) {
 	} else {
 		log.Fatalf("The connection was closed before writing for some reason")
 	}
+
+}
+
+func HandleError(io.Writer, *request.Request) *HandlerError {
 
 }
