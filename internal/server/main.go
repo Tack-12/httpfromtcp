@@ -2,16 +2,15 @@ package server
 
 import (
 	"fmt"
+	"httpfromtcp/internal/response"
 	"log"
 	"net"
 	"strconv"
-	"sync/atomic"
 )
-
-var ServerClosed atomic.Bool
 
 type Server struct {
 	Listner net.Listener
+	Status  bool
 }
 
 func Serve(port int) (*Server, error) {
@@ -27,6 +26,7 @@ func Serve(port int) (*Server, error) {
 
 	MainServer = &Server{
 		Listner: server,
+		Status:  true,
 	}
 
 	go MainServer.listenConnection()
@@ -37,36 +37,58 @@ func Serve(port int) (*Server, error) {
 func (s *Server) listenConnection() {
 
 	for {
-		if !ServerClosed.Load() {
-			conn, err := s.Listner.Accept()
 
-			if err != nil {
-				log.Fatalf("Error getting a connection. Error: %s", err)
-			}
-
-			go s.handleConn(conn)
+		conn, err := s.Listner.Accept()
+		if !s.Status {
+			return
 		}
+		if err != nil {
+			log.Fatalf("Error getting a connection. Error: %s", err)
+		}
+
+		go s.handleConn(conn)
 
 	}
 }
 
 func (s *Server) Close() error {
-	err := s.Listner.Close()
-	ServerClosed.Store(true)
+
+	log.Printf("THE CONNECTION is CLOSED")
+
+	var err error
+
+	defer func() {
+		err = s.Listner.Close()
+	}()
+
 	if err != nil {
 		return err
 	}
+	s.Status = false
+
 	return nil
 }
 
 func (s *Server) handleConn(conn net.Conn) {
 
-	response := []byte("HTTP/1.1 200 OK\nContent-Type: text/plain\nContent-Length: 13\nHello World!\n")
+	if s.Status {
 
-	_, err := conn.Write(response)
+		err := response.WriteStatusLine(conn, 200)
 
-	if err != nil {
-		log.Fatalf("Error Writing into the Connection %s", err)
+		if err != nil {
+			log.Fatalf("Error Writing Status into the Connection %s", err)
+		}
+		headers := response.GetDefaultHeaders(0)
+
+		err = response.WriteHeaders(conn, headers)
+
+		if err != nil {
+			log.Fatalf("Error Writing Headers into the Connection %s", err)
+		}
+		defer conn.Close()
+
+	} else {
+		log.Fatalf("The connection was closed before writing for some reason")
 	}
 
 }
